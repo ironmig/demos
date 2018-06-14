@@ -77,10 +77,7 @@ int main(int argc, char * argv[])
 
   // Initialize default demo parameters
   bool show_camera = false;
-  size_t depth = 10;
   double freq = 30.0;
-  rmw_qos_reliability_policy_t reliability_policy = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
-  rmw_qos_history_policy_t history_policy = RMW_QOS_POLICY_HISTORY_KEEP_LAST;
   size_t width = 320;
   size_t height = 240;
   bool burger_mode = false;
@@ -91,35 +88,22 @@ int main(int argc, char * argv[])
   // even when executed simultaneously within a launch file.
   setvbuf(stdout, NULL, _IONBF, BUFSIZ);
 
+  // Set the parameters of the quality of service profile. Initialize as the default profile
+  // and set the QoS parameters specified on the command line.
+  rmw_qos_profile_t custom_camera_qos_profile = rmw_qos_profile_default;
+
   // Configure demo parameters with command line options.
-  bool success = parse_command_options(
-    argc, argv, &depth, &reliability_policy, &history_policy, &show_camera, &freq, &width, &height,
-    &burger_mode, &topic);
-  if (!success) {
+  if (!parse_command_options(
+      argc, argv, &(custom_camera_qos_profile.depth), &(custom_camera_qos_profile.reliability),
+      &(custom_camera_qos_profile.history), &show_camera, &freq, &width, &height,
+      &burger_mode, &topic))
+  {
     return 0;
   }
 
   // Initialize a ROS 2 node to publish images read from the OpenCV interface to the camera.
   auto node = rclcpp::Node::make_shared("cam2image");
   rclcpp::Logger node_logger = node->get_logger();
-
-  // Set the parameters of the quality of service profile. Initialize as the default profile
-  // and set the QoS parameters specified on the command line.
-  rmw_qos_profile_t custom_camera_qos_profile = rmw_qos_profile_default;
-
-  // Depth represents how many messages to store in history when the history policy is KEEP_LAST.
-  custom_camera_qos_profile.depth = depth;
-
-  // The reliability policy can be reliable, meaning that the underlying transport layer will try
-  // ensure that every message gets received in order, or best effort, meaning that the transport
-  // makes no guarantees about the order or reliability of delivery.
-  custom_camera_qos_profile.reliability = reliability_policy;
-
-  // The history policy determines how messages are saved until the message is taken by the reader.
-  // KEEP_ALL saves all messages until they are taken.
-  // KEEP_LAST enforces a limit on the number of messages that are saved, specified by the "depth"
-  // parameter.
-  custom_camera_qos_profile.history = history_policy;
 
   RCLCPP_INFO(node_logger, "Publishing data on topic '%s'", topic.c_str())
   // Create the image publisher with our custom QoS profile.
